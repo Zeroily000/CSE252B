@@ -1,0 +1,351 @@
+\documentclass{../../assignment}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{arydshln}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\lstset{
+numbers=left
+}
+
+\coursetitle{Computer Vision II}
+\courselabel{CSE 252B}
+\exercisesheet{Homework 3}{}
+\student{Zhu, Zhongjian}
+\university{University of California, San Diego}
+\semester{Winter 2017}
+\date{\today}
+
+\begin{document}
+\begin{problemlist}
+
+\pbitem {\bfseries Programming: Estimation of the camera pose (rotation and translation of a calibrated camera)}
+
+\begin{enumerate}
+\item \textbf{Outlier rejection}\\
+The corresponding 3D scene and 2D image points contain both inlier and outlier correspondences. For the inlier correspondences, the scene points have been randomly generated and projected to image points under a camera projection matrix, then noise has been added to the image point coordinates. The camera calibration matrix is given by
+\[K = 
+\begin{bmatrix}
+1545.0966799187809 & 0 & 639.5\\
+0 & 1545.0966799187809 & 359.5\\
+0 & 0 & 1\\
+\end{bmatrix}.
+\]
+Determine the set of inlier point correspondences using the M-estimator Sample Consensus (MSAC) algorithm, where the maximum number of attempts to find a consensus set is determined adaptively.\\\\
+\textbf{Solution}\\
+Before running this algorithm, we should first normalize the 2D inhomogeneous points. The adaptive number of trials MSAC algorithm can be concluded as follow:
+\begin{lstlisting}
+consensus_min_cost = inf
+max_trials = inf
+for (trials = 0; trials < max_trials && consensus_min_cost > threshold; ++trials)
+{
+	select a random sample
+	calculate the model
+	calculate the error
+	calculate the cost
+	if(consensus_min_cost < consensus_min_cost)
+	{
+		consensus_min_cost = consensus_cost
+		consensus_min_cost_model = model
+		number of inliers
+		w = # of inliers / # of data points
+		max_trials = log(1-p) / log(1-w^s)
+	}
+}
+\end{lstlisting}
+%% Initialization
+The first two step is the initialization. We set some large number to cost and trial times in order to get into the iteration.
+Besides, we need also to assume the probability that at least one of the random samples does not contain any outliers, $p$, sample size, $s$. Those two parameters are used to update the maximum number of trials.
+For the cost calculation, we need set a tolerance which is determined by the probability that a data point is an inlier, $\alpha$, and the codimension, $m$.
+In the iteration step, first, the threshold here is not important, so we can just set it to 0.
+
+% Select a random sample
+Sample selection step is to randomly select three 3D inhomogeneous points in world coordinate frame and calculate the distances between each two of them,say $a$, $b$ and $c$. Then use the corresponding 2D normalized homogeneous points to get the direction vectors of those three 3D points, $\mathbf{j}_1$, $\mathbf{j}_2$ and $\mathbf{j}_3$. 
+
+% calculate the model
+Next step is the calculation of the model which is the camera pose here, $\hat{\mathbf{P}}$. By doing this we need first to use the 3-point algorithm of Finsterwalder to calculate the coordinates of those three points in camera coordinate frame. 
+
+% Finsterwalder
+First, we know the side lengths of these three points
+$$a = \|\mathbf{p}_2 - \mathbf{p}_3\|$$
+$$b = \|\mathbf{p}_1 - \mathbf{p}_3\|$$
+$$c = \|\mathbf{p}_1 - \mathbf{p}_2\|$$
+where $\mathbf{p}_i$ is the 3D point in camera coordinate frame, which is what we need. Also we know the projected 2D points, $\mathbf{q}_i$, so we can get the direction vector of the 3D points, $\mathbf{j}_i$. Hence, we can get the angle between each two of them
+$$\cos\alpha = \mathbf{j}_2 \cdot \mathbf{j}_3$$
+$$\cos\beta = \mathbf{j}_1 \cdot \mathbf{j}_3$$
+$$\cos\gamma = \mathbf{j}_1 \cdot \mathbf{j}_2$$
+and represent 3D points as
+$$\mathbf{p}_i = s_i\mathbf{j}_i, i = 1, 2, 3.$$ So we only need to calculate $s_i$.
+$$s_2 = us_1$$
+$$s_3 = vs_1$$
+$$s_1^2 = \frac{a^2}{u^2+v^2-2uv\cos\alpha} = \frac{b^2}{1+v^2-2v\cos\beta} = \frac{c^2}{1+u^2-2u\cos\gamma}.$$
+The solution is summarized by Finsterwalder and Scheufele. The main idea is to find a root of a cubic polynomial and the roots of two quadratic polynomials. The cubic equation for $\lambda$ is
+$$G\lambda^3 + H\lambda^2 + I\lambda + J = 0$$
+where
+$$G = c^2(c^2\sin^2\beta - b^2\sin^2\gamma)$$
+$$H = b^2(b^2 - a^2)\sin^2\gamma + c^2(c^2 + 2a^2)\sin^2\beta + 2b^2c^2(-1 + \cos\alpha \cos\beta \cos\gamma)$$
+$$I = b^2(b^2 - c^2)\sin^2\alpha + a^2(a^2 + 2c^2)\sin^2\beta + 2a^2b^2(-1 + \cos\alpha \cos\beta \cos\gamma)$$
+$$J = a^2(a^2\sin^2\beta - b^2\sin^2\alpha).$$
+The quadratic equations are
+$$Au^2 + 2Buv + Cv^2 + 2Du + 2E v + F = 0$$
+and
+$$(B^2 - AC)u^2 + 2(BE - CD)u + E^2 -CF = (up + q)^2$$
+where
+$$A = 1 + \lambda$$
+$$B = -\cos\alpha$$
+$$C = \frac{b^2 - a^2}{b^2} - \lambda \frac{c^2}{b^2}$$
+$$D = -\lambda \cos\gamma$$
+$$E = (\frac{a^2}{b^2} + \lambda \frac{c^2}{b^2})\cos\beta$$
+$$F = \frac{-a^2}{b^2} + \lambda (\frac{b^2 - c^2}{b^2}).$$
+The solutions are
+$$u_{large} = \frac{sgn(L)}{K}[|L| + \sqrt{(L^2 - KM)}]$$
+$$u_{small} = \frac{M}{Ku_{large}}$$
+$$v = um + n$$
+where
+$$K = b^2 - m^2c^2$$
+$$L = c^2(\cos\beta - n)m - b^2\cos\gamma$$
+$$M = -c^2n^2 + 2c^2n\cos\beta + b^2 - c^2$$
+$$m = [-B \pm p]/C$$
+$$n = [-(E \mp q)]/C$$
+$$p = \sqrt{B^2 - AC}$$
+$$q = sign(BE - CD)\sqrt{E^2 - CF}.$$
+
+This algorithm may have complex roots which we do not need. So here we have to find at least one real solution. If all the solutions are complex, we can re-select three points and run this algorithm again. 
+
+% Umeyama
+Since this algorithm might give us as many as four real solutions, we need to compare them. The standard is to choose the one that has the minimal error. So first we use these estimated points in camera coordinate frame and their corresponding points in world coordinate frame to estimate $\hat{\mathbf{P}}$. Once we have $\hat{\mathbf{P}}$, we can calculate the mean squared error for all solutions and choose the one that has the minimum MSE.
+First we calculate
+$$\mu_x = \frac{1}{n} \sum_{i = 1}^n \mathbf{x}_i$$
+$$\mu_y = \frac{1}{n} \sum_{i = 1}^n \mathbf{y}_i$$
+$$\sigma_x^2 = \frac{1}{n} \sum_{i = 1}^n \|\mathbf{x}_i - \mathbf{\mu_x}\|^2$$
+$$\sigma_y^2 = \frac{1}{n} \sum_{i = 1}^n \|\mathbf{y}_i - \mathbf{\mu_y}\|^2$$
+$$\Sigma_{xy} = \frac{1}{n} \sum_{i = 1}^n (\mathbf{y}_i - \mathbf{\mu_y})(\mathbf{x}_i - \mathbf{\mu_x}).$$
+When rank($\Sigma_{xy} \geqslant m-1$)
+$$\mathbf{R = USV^{\top}}$$
+$$\mathbf{t} = \mathbf{\mu_y} - c\mathbf{R\mu_x}$$
+$$c = \frac{1}{\sigma_x^2}tr(DS)$$
+where $UDV^{\top}$ is a singular value decomposition of $\Sigma_{xy}$ and
+$$\mathbf{S} =
+\begin{cases}
+\mathbf{I}& \text{if det$(\Sigma_{xy}) \geqslant 0$}\\
+diag(1,1,...,-1)& \text{if det$(\Sigma_{xy}) < 0$}
+\end{cases}.$$
+Finally, the mean squared error is
+$$e^2(\mathbf{R},\mathbf{t},c) = \frac{1}{n} \sum_{i = 1}^n \| \mathbf{y}_i - (c\mathbf{Rx}_i + \mathbf{t}) \|^2.$$
+% calculate error
+Next step is to calculate the error for each points projected using the camera pose, which is the squared distance. 
+% calculate cost
+Next we need to calculate the cost. First we set a tolerance. Here we use $t^2 = F_m^{-1}(\alpha)$ where $t^2$ is the mean squared distance threshold and $F_m^{-1}(\alpha)$ is the inverse chi-squared cumulative distribution function. We choose $\alpha = 0.95$ and $m = 2$. For points whose error is less or equal to the tolerance, we add the error to the cost and for those whose error is greater than the tolerance, we add the tolerance to the cost. The points whose error are less or equal to the tolerance are inliers and the others are outliers. Then if the cost is less than the previous cost, we keep the cost, the camera pose and the number of inliers. Then update the maximum number of trials.\\
+
+
+
+\textbf{Result}\\
+% result
+Eventually, we will find the inliers. However, the total number of the inliers are dependent on the choose of the points used to calculate the model. So we will have different number of inliers, the range is from about 20 to 50. Here we assumed that the probability $p$ that at least one of the random samples does not contain any outliers is 0.99, the probability $\alpha$ that a given data point is an inlier is 0.95 and the variance, $\sigma^2$, of the measurement error is 1. In the code file, I keep one random sequence which can get 48 inliers. The number of maximum trials is 6.4189, so it runs 7 times to find the consensus set.
+
+\item {\bfseries Linear estimation}\\
+Estimate the nomalized camera projection matrix $\mathbf{\hat{P}_{linear} = [R_{linear}|t_{linear}]}$ from the resulting set of inlier correspondences using the linear estimation method (based on the EPnP methon).
+\\\\
+\textbf{Solution}\\
+First calculate the control points in world coordinate frame
+$$\mathbf{\widetilde{X}} = \alpha_1\mathbf{\widetilde{C}}_1 + \alpha_2\mathbf{\widetilde{C}}_2 + \alpha_3\mathbf{\widetilde{C}}_3 + \alpha_4\mathbf{\widetilde{C}}_4$$
+where $\alpha_1 + \alpha_2 + \alpha_3 + \alpha_4 = 1$ and $\mathbf{\widetilde{C}}_i$ is the control point in world coordinate frame. Then we can use
+\[
+\begin{bmatrix}
+\mathbf{\widetilde{C}}_2 - \mathbf{\widetilde{C}}_1 & \mathbf{\widetilde{C}}_3 - \mathbf{\widetilde{C}}_1 & \mathbf{\widetilde{C}}_4 - \mathbf{\widetilde{C}}_1
+\end{bmatrix}
+\begin{bmatrix}
+\alpha_2\\
+\alpha_3\\
+\alpha_4\\
+\end{bmatrix}
+= \mathbf{\widetilde{X}} - \mathbf{\widetilde{C}}_1
+\]
+to solve for $\alpha_i$.
+Next, we use the $\alpha_i$ to calculate the control points in camera coordinate frame by solving
+\[
+\begin{bmatrix}
+\mathbf{m}_1 & \mathbf{m}_2 & \mathbf{m}_3 & \mathbf{m}_4
+\end{bmatrix}
+\begin{bmatrix}
+\mathbf{\widetilde{C}}_{cam1}\\
+\mathbf{\widetilde{C}}_{cam2}\\
+\mathbf{\widetilde{C}}_{cam3}\\
+\mathbf{\widetilde{C}}_{cam4}
+\end{bmatrix}
+= \mathbf{0}
+\]
+where
+\[
+\mathbf{m}_i = 
+\begin{bmatrix}
+\alpha_i & 0 & -\alpha_i \hat{\widetilde x}\\
+0 & \alpha_i & -\alpha_i \hat{\widetilde y}
+\end{bmatrix}.
+\]
+Then deparameterize 3D points in camera coordinate frame.
+$$
+\mathbf{\widetilde{X}}_{cami} = 
+\alpha_{i1}\mathbf{\widetilde{C}}_{cam1} +
+\alpha_{i2}\mathbf{\widetilde{C}}_{cam2} +
+\alpha_{i3}\mathbf{\widetilde{C}}_{cam3} +
+\alpha_{i4}\mathbf{\widetilde{C}}_{cam4}.
+$$
+Finally scale $\mathbf{\widetilde{X}}_{cami}$ by $\beta$ where
+$$
+\beta =
+\begin{cases}
+-\sqrt{\frac{\sigma_{\mathbf{\widetilde{X}}}^2}{\sigma_{\mathbf{\widetilde{X}}_{cam}}^2}} &
+\text{if $\widetilde{Z}_{cam}^{\mu} < 0$ }\\\\
+\sqrt{\frac{\sigma_{\mathbf{\widetilde{X}}}^2}{\sigma_{\mathbf{\widetilde{X}}_{cam}}^2}} &
+\text{otherwise}
+\end{cases}.
+$$
+Now we get the 3D points in camera coordinate frame, we use the same method as part (b) to get the camera pose, $\mathbf{R,t}$.\\
+
+\textbf{Result}\\
+\[
+\mathbf{R}_{linear} = 
+\begin{bmatrix}
+0.278447371550749 & -0.690718604868692 & 0.667364121124838\\
+0.661808637312523 & -0.365573521123451 & -0.65449624004416\\
+0.696043381446171 &  0.623910097323043 & 0.355330552589179
+\end{bmatrix}.
+\]
+
+\[
+\mathbf{t}_{linear} = 
+\begin{bmatrix}
+5.58202213963106\\
+7.59512640749481\\
+175.906948079384
+\end{bmatrix}.
+\]
+\item \textbf{Nonlinear estimation}\\
+Use $\mathbf{R}_{linear}$ and $\mathbf{t}_{linear}$ as an initial estimate to the Levenberg-Marquardt estimation method to determine the Maximum Likelihood estimate of the camera pose that minimizes the projection error under the normalized camera projection matrix $\hat{\mathbf{P}} = [\mathbf{R|t}]$.\\
+
+\textbf{Solution}\\
+The Levenberg-Marquardt algorithm is as follow:
+\begin{enumerate}[I]
+\item $\lambda = 0.001;\\
+\epsilon = \mathbf{\widetilde x} - \mathbf{\hat{\widetilde x}}$
+\\
+\item $\mathbf{J} = \frac{\partial \mathbf{\hat{\widetilde x}}}{\partial \mathbf{\hat{p}}}$
+\\
+\item $\mathbf{J^{\top} \Sigma^{-1} J \delta = J^{\top} \Sigma^{-1} \epsilon}$
+\\
+\item $\mathbf{(J^{\top} \Sigma^{-1} J + \lambda I)\delta = J^{\top} \Sigma^{-1} \epsilon}$, solve for $\delta$.
+\\
+\item $\mathbf{\hat{p}_0 = \hat{p} + \delta}$, candidate parameter vector.
+\\
+\item $\mathbf{\hat{p}_0 \mapsto \hat{\widetilde x}_0}$;\\
+$\epsilon_0 = \mathbf{\widetilde x} - \mathbf{\hat{\widetilde x}_0}$
+\\
+\item 
+If $\mathbf{\epsilon_0^{\top} \Sigma_{\widetilde x}^{-1} \epsilon_0}$ cost less than $\mathbf{\epsilon^{\top} \Sigma_{\widetilde x}^{-1} \epsilon}$,\\
+$\mathbf{\hat{p} = \hat{p}_0}$, $\epsilon = \epsilon_0$, $\lambda = 0.1\lambda$, go to step II or terminate.
+\\
+Else,\\
+$\lambda = 10\lambda$, go to step IV\\
+\end{enumerate}
+First we need to parameterize $\mathbf{R}$, $\mathbf{R} = e^{[\omega]_{\times}}$. 
+$$\mathbf{(R-I)v =0}$$
+$\mathbf{v}$ is the null space of $\mathbf{R-I}$. So it can be calculated using SVD.
+$$\sin\theta = \frac{\mathbf{v^{\top}v}}{2}$$
+$$\cos\theta = \frac{Tr(\mathbf{R} - 1)}{2}$$
+$$\theta= \tan^{-1}(\frac{\sin\theta}{\cos\theta})$$.
+Finally, we get the deparameterized rotation matrix
+$$\omega = \theta\frac{\mathbf{v}}{\mathbf{\|v\|}}$$.
+
+
+All 2D points used in this problem are normalized, $\mathbf{\hat{x}} = \mathbf{K}^{-1}\mathbf{x}$. Also $\mathbf{\hat{x}} = \mathbf{\widetilde{X}}_{rotate} + \mathbf{t}$, where $\mathbf{\widetilde{X}}_{rotate} = e^{[\mathbf{\omega}]_{\times}}\mathbf{\widetilde{X}}$.
+
+$$
+e^{[\mathbf{\omega}]_{\times}}\mathbf{\widetilde{X}} =
+\begin{cases}
+\mathbf{\widetilde{X}} + \omega \times \mathbf{\widetilde{X}} &
+\text{for zero or small rotations}\\\\
+\mathbf{\widetilde{X}} + \mathrm{sinc}(\|\omega\|)(\omega \times \mathbf{\widetilde{X}}) + \frac{1-\cos(\|\omega\|)}{\|\omega\|^2} \omega \times (\omega \times \mathbf{\widetilde{X}}) &
+\text{otherwise}
+\end{cases}.
+$$
+In this case, we set angles, $\theta = \|\omega\|$, smaller than 5 degrees, $\pi /36$ radians, are small.\\
+The Jacobian matrix here is a 2n$\times$6 matrix, where n is the total number of samples. For every two rows
+$\mathbf{A}_i = \frac{\partial \mathbf{\hat{\widetilde x}}_i}{\partial \mathbf{\omega^{\top},t^{\top}}}$. Since we have already now the function $f: \mathbf{X}\mapsto \mathbf{\hat{\widetilde x}}$, so we can use the Symbolic Toolbox of MATLAB to get the Jacobian matrix directly. Since here we use normalized points, we still need to calculate covariance propagation. We assume the covariance matrix of $\mathbf{\widetilde x}$ is an identity matrix, $\mathbf{I}$. So $\Sigma_{\mathbf{\hat{\widetilde x}}} = \mathbf{JJ^{\top}}$, where $\mathbf{J}$ is the first two columns and rows of $\mathbf{K}^{-1}$. In step three and four, we get $\delta$ and then in step five we update the parameters. Next, deparameterize $\omega$ by doing matrix logarithm, $\omega = \mathrm{ln} \mathbf{R}$, and get the camera pose matrix. Project 3D points using camera pose matrix and dehomogenenize the projected points. Calculate the current cost using the normalized inhomogeneous points and the projected inhomogeneous points. The terminate condition is the difference of cost between two iterations is less than 0.00001.
+
+
+
+
+
+
+
+
+\textbf{Result}\\
+The costs of every step are
+\begin{center}  
+\begin{tabular}{|l|l|}
+\hline
+Iteration&Cost\\
+\hline
+0&71.5421\\
+\hline 
+1&71.4556\\
+\hline 
+2&71.4555\\
+\hline 
+\end{tabular}
+\end{center}
+The parameters are
+\[
+\mathbf{\omega}_{LM} = 
+\begin{bmatrix}
+1.33677874302384\\
+-0.0307072673745825\\
+1.41387299017944
+\end{bmatrix}.
+\]
+
+
+
+\[
+\mathbf{R}_{LM} = 
+\begin{bmatrix}
+0.278334558217948 &  -0.69081471280433 & 0.667311700987395\\
+0.661190896671845 & -0.366131638967175 & -0.654808537746334\\
+0.696675298729545 &  0.623476267006436 & 0.354853311411656
+\end{bmatrix}.
+\]
+
+\[
+\mathbf{t}_{LM} = 
+\begin{bmatrix}
+5.57027683548205\\
+7.52808246620935\\
+175.910218890022
+\end{bmatrix}.
+\]
+
+
+
+
+
+
+\end{enumerate}
+\end{problemlist}
+\begin{flushleft}
+\large{\textbf{Appendix}}
+\end{flushleft}
+
+\lstinputlisting[language=MATLAB]{../src/main.m}
+\lstinputlisting[language=MATLAB]{../src/CalRt3P.m}
+\lstinputlisting[language=MATLAB]{../src/CalRtnP.m}
+\lstinputlisting[language=MATLAB]{../src/Finsterwalder.m}
+\lstinputlisting[language=MATLAB]{../src/jcb.m}
+\lstinputlisting[language=MATLAB]{../src/parameterization.m}
+\lstinputlisting[language=MATLAB]{../src/deparameterization.m}
+\lstinputlisting[language=MATLAB]{../src/skew.m}
+
+
+\end{document}

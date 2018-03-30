@@ -6,8 +6,8 @@ fprintf('Detecting corners... ')
 win_detect = 11;
 win_spr = 9;
 eigen_th = 5;
-I0 = imread('price_center20.JPG');
-I1 = imread('price_center21.JPG');
+I0 = imread('../data/price_center20.JPG');
+I1 = imread('../data/price_center21.JPG');
 [r0,c0,x_f0,y_f0] = CornerCoordinate(I0,win_detect,win_spr,eigen_th);
 [r1,c1,x_f1,y_f1] = CornerCoordinate(I1,win_detect,win_spr,eigen_th);
 fprintf('Done\n')

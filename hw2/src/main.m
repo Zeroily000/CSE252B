@@ -2,8 +2,8 @@ close all;
 clear;
 clc;
 %% Load Data
-x = load('hw2_points2D.txt');
-X = load('hw2_points3D.txt');
+x = load('../data/hw2_points2D.txt');
+X = load('../data/hw2_points3D.txt');
 n = numel(x);
 A = zeros(n,12);
 %% Data Normalization
@@ -93,10 +93,10 @@ while tolerance < previous_cost - current_cost
         lambda = 10*lambda;
     end
 end
-
+fprintf('-----------------\n\n')
 p_bar_final = deparameterization(p_hat0);
 format shortg
 P_LM = T\reshape(p_bar_final,4,3)'*U;
 P_LM = P_LM/norm(P_LM,'fro');
-fprintf('\nP_LM = \n')
+fprintf('P_LM = \n')
 disp(P_LM)
