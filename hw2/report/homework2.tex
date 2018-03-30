@@ -1,0 +1,127 @@
+\documentclass{../../assignment}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{arydshln}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\lstset{
+numbers=left
+}
+
+\coursetitle{Computer Vision II}
+\courselabel{CSE 252B}
+\exercisesheet{Homework 2}{}
+\student{Zhu, Zhongjian}
+\university{University of California, San Diego}
+\semester{Winter 2017}
+\date{\today}
+
+\begin{document}
+\begin{problemlist}
+
+\pbitem {\bfseries Programming: Estimation of the camera projection matrix}
+
+\begin{enumerate}
+\item \textbf{Linear estimation}\\
+Estimate the camera projection matrix $\mathrm{P_{DLT}}$ using the direct linear transformation (DLT) algorithm (with data normalization).
+\\\\
+\textbf{Solution}\\
+To get the projection matrix, we need to first vectorize $\mathbf{P}$ and then solve the equation below.
+\[
+\begin{bmatrix}
+[\mathbf{x_1}]^{\bot} \otimes \mathbf{X_1}^{\top}\\
+[\mathbf{x_2}]^{\bot} \otimes \mathbf{X_2}^{\top}\\
+\vdots \\
+[\mathbf{x_n}]^{\bot} \otimes \mathbf{X_n}^{\top}\\
+\end{bmatrix}\mathbf{p}=\mathbf{0}
+\]
+where $[\mathbf{x_1}]^{\bot}$ is the left null space of $\mathbf{x_i}$.
+To get the left null space of $\mathbf{x_i}$, we need the Householder Matrix.
+$$\mathbf{H_V} = \mathbf{I} - 2\frac{\mathbf{V V^{\top}}}{\mathbf{V^{\top} V}}$$
+$$\mathbf{V} = \mathbf{x} + sign(x_1)\|\mathbf{x}\|\mathbf{e_1}$$
+The 2 to 3 rows of $\mathbf{H_V}$ is the left null space of $\mathbf{x_i}$.\\
+Since the DoF of $\mathbf{p}$ is 11, we need at least 6 points to solve the equation. Suppose the left null space is $\mathbf{A}$, using Singular Value Decomposition we can get
+$$\mathbf{A} = \mathbf{U}\mathbf{\Sigma}\mathbf{V}^{\top}$$
+and $\mathbf{p}$ is the last column of $\mathbf{V}$.
+\\\\
+\textbf{Result}\\
+\[
+\mathbf{P_{DLT}} = 
+\begin{bmatrix}
+-0.0060446 & 0.0048386 & -0.0088225 & -0.8405\\
+-0.0090945 & 0.0023023 &  0.0061782 & -0.54156\\
+-5.0076\times 10^{-6} & -4.4768\times 10^{-6} &  -2.5529\times 10^{-6}& -0.0012515
+\end{bmatrix}.
+\]
+\\\\
+\item {\bfseries Nonlinear estimation}\\
+Use $\mathbf{P_{DLT}}$ as an initial estimate to an iterative estimation method, specifically the Levenberg-Marquardt algorithm, to determine the Maximum Likelihood estimate of the camera projection matrix that minimizes the projection error.
+\\\\
+\textbf{Solution}\\
+The algorithm works as follow:
+\begin{enumerate}[I]
+\item $\lambda = 0.001;\\
+\epsilon = \mathbf{\widetilde x} - \mathbf{\hat{\widetilde x}}$
+\\
+\item $\mathbf{J} = \frac{\partial \mathbf{\hat{\widetilde x}}}{\partial \mathbf{\hat{p}}}$
+\\
+\item $\mathbf{J^{\top} \Sigma^{-1} J \delta = J^{\top} \Sigma^{-1} \epsilon}$
+\\
+\item $\mathbf{(J^{\top} \Sigma^{-1} J + \lambda I)\delta = J^{\top} \Sigma^{-1} \epsilon}$, solve for $\delta$.
+\\
+\item $\mathbf{\hat{p}_0 = \hat{p} + \delta}$, candidate parameter vector.
+\\
+\item $\mathbf{\hat{p}_0 \mapsto \hat{\widetilde x}_0}$;\\
+$\epsilon_0 = \mathbf{\widetilde x} - \mathbf{\hat{\widetilde x}_0}$
+\\
+\item 
+If $\mathbf{\epsilon_0^{\top} \Sigma_{\widetilde x}^{-1} \epsilon_0}$ cost less than $\mathbf{\epsilon^{\top} \Sigma_{\widetilde x}^{-1} \epsilon}$,\\
+$\mathbf{\hat{p} = \hat{p}_0}$, $\epsilon = \epsilon_0$, $\lambda = 0.1\lambda$, go to step II or terminate.
+\\
+Else,\\
+$\lambda = 10\lambda$, go to step IV\\
+\end{enumerate}
+Here, the termination condition is $0.0001 \geqslant previous\_cost - current\_cost$.
+\\\\
+\textbf{Result}\\
+The costs of every step are
+\begin{center}  
+\begin{tabular}{|l|l|}
+\hline
+Iteration&Cost\\
+\hline
+0&84.0826\\
+\hline 
+1&82.7913\\
+\hline 
+2&82.7902\\
+\hline 
+3&82.7902\\
+\hline 
+\end{tabular}
+\end{center}
+
+The final estimate of the camera projection matrix is
+\[
+\mathbf{P_{LM}} = 
+\begin{bmatrix}
+0.0060943 & -0.0047265 & 0.0087902 & 0.84364\\
+0.0090202 & -0.0022929 &  -0.0061333 & 0.53666\\
+4.9909\times 10^{-6} & 4.4521\times 10^{-6} &  2.5371\times 10^{-6}& 0.0012435
+\end{bmatrix}.
+\]
+\end{enumerate}
+\end{problemlist}
+\begin{flushleft}
+\large{\textbf{Appendix}}
+\end{flushleft}
+
+\lstinputlisting[language=MATLAB]{../src/main.m}
+\lstinputlisting[language=MATLAB]{../src/jcb.m}
+\lstinputlisting[language=MATLAB]{../src/estimate.m}
+\lstinputlisting[language=MATLAB]{../src/parameterization.m}
+\lstinputlisting[language=MATLAB]{../src/deparameterization.m}
+
+\end{document}
