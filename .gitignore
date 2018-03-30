@@ -1,4 +1,11 @@
-*
+# apple
+.DS_Store
 
-!.gitignore
-!**/src
+# latex
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.gz
+*.xdv
