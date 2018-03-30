@@ -1,5 +1,4 @@
 *
 
 !.gitignore
-!src/*
-!report/*
+!hw1/
