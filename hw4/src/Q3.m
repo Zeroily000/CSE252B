@@ -1,5 +1,7 @@
 clear;clc;
 load('../data/x.mat');
+I0 = imread('../data/price_center20.JPG');
+I1 = imread('../data/price_center21.JPG');
 x1 = padarray(x1_inhomo,[1 0],1,'post');
 x2 = padarray(x2_inhomo,[1 0],1,'post');
 n = size(x1,2);
@@ -53,8 +55,6 @@ x1_inlier_inhomo = x1_inhomo(:,inliers);
 x2_inlier_inhomo = x2_inhomo(:,inliers);
 save('../data/x_inlier.mat','x1_inlier_inhomo','x2_inlier_inhomo');
 %% Plot
-I0 = imread('../data/price_center20.JPG');
-I1 = imread('../data/price_center21.JPG');
 figure
 imshow(insertShape(I0,'Line',[x1_inlier_inhomo',x2_inlier_inhomo'],...
     'Color','blue'));hold on
