@@ -12,3 +12,6 @@
 
 # matlab
 *.mat
+
+# image
+*.png
