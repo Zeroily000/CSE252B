@@ -161,8 +161,7 @@ epsilon = reshape(x_img_norm_inlier_inhomo - x_prj_norm_inlier_inhomo,[],1);
 
 % format short
 % iteration = 0;
-init_cost = epsilon'*(sigma\epsilon);
-current_cost = init_cost;
+current_cost = epsilon'*(sigma\epsilon);
 fprintf('%d\t%.4f\n', itr, current_cost)
 
 J = jcb(f_large,f_small,X_wld_inlier_inhomo,w_lin,t_lin);

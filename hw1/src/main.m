@@ -13,7 +13,7 @@ I1 = imread('../data/price_center21.JPG');
 fprintf('Done\n')
 
 %% Feature Matching
-fprintf('Feature matching... ')
+fprintf('Matching features... ')
 win_match = 11;
 simi_th = 0.6;
 dist_th = 0.9;
