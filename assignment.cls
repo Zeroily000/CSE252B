@@ -137,7 +137,7 @@
 \parbox{0.99\textwidth}{\centering\thepage}
 }
 }
-\AtEndDocument{\vfill\noindent \sl{Submitted by \@student\ on \@date.}}
+% \AtEndDocument{\vfill\noindent \sl{Submitted by \@student\ on \@date.}}
 \endinput
 %%
 %% End of file `assignment.cls'.

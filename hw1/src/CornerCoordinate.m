@@ -38,8 +38,8 @@ for k = 1:numel(r)
                    c(k) - (win2-1)/2:c(k) + (win2-1)/2);
     im_win_y = imy(r(k) - (win2-1)/2:r(k) + (win2-1)/2,...
                    c(k) - (win2-1)/2:c(k) + (win2-1)/2);
-    xx = [r(k) - (win2-1)/2 : r(k) + (win2-1)/2]' .* ones(win2);
-    yy = [c(k) - (win2-1)/2 : c(k) + (win2-1)/2] .* ones(win2);
+    xx = (r(k) - (win2-1)/2 : r(k) + (win2-1)/2)' .* ones(win2);
+    yy = (c(k) - (win2-1)/2 : c(k) + (win2-1)/2) .* ones(win2);
     
     y(1) = sum(sum( xx.*im_win_x.^2 + yy.*im_win_x.*im_win_y ));
     y(2) = sum(sum( xx.*im_win_x.*im_win_y + yy.*im_win_y.^2 ));
